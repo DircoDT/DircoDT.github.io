@@ -1,2 +1,3 @@
-# DircoDT.github.io
-Map Visualisation Demo
+# Interactive Map
+
+[demo](./index.html)
