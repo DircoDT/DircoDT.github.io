@@ -1,3 +1,3 @@
 # Interactive Map
 
-[demo](./index.html)
+[demo](https://dircodt.github.io/index.html)
