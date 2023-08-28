@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!--H3.js (must be imported before deckgl)-->
+    <script src="https://unpkg.com/h3-js@^3.0.0"></script>
+
     <!--Deck.gl-->
     <script src="https://unpkg.com/deck.gl@8.9.25/dist.min.js"></script>
 
     <!--MapLibre GL JS-->
     <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css">
     <script src="https://unpkg.com/maplibre-gl@3.3.0/dist/maplibre-gl.js"></script>
-
-    <!--H3.js-->
-    <!--script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0"></script-->
 
     <!--Pako-->
     <!--script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script-->
@@ -25,10 +25,11 @@
     <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
 
     <!--amCharts-->
-    <!--script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/index.js"></script>
     <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
-    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script-->
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
 
+    <!--Noto Sans font-->
     <link href="https://fonts.cdnfonts.com/css/noto-sans" rel="stylesheet">
 
     <style>
@@ -37,17 +38,56 @@
         margin: 0;
         padding: 0;
         overflow: hidden;
+        box-sizing: border-box;
         font-family: 'Noto Sans', 'Open Sans', 'Roboto', 'Segoe UI', 'Helvetica', 'Arial', sans-serif; /* Fall-back font stack */
       }
 
       #map-container {
-        height: 50vh;
+        box-sizing: border-box;
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100vw;
+        height: 50vh;
+      }
+
+      #chart-container {
+        box-sizing: border-box;
+        position: absolute;
+        top: 50vh;
+        left: 0;
+        width: 49.9vw;
+        height: 50vh;
       }
 
       #table-container {
+        box-sizing: border-box;
+        position: absolute;
+        top: 50vh;
+        left: 50vw;
+        width: 49.9vw;
         height: 50vh;
-        width: 100vw;
+       }
+
+      /* Alternative styles for portrait mode */
+      @media (orientation: portrait) {
+        #map-container {
+          height: 40vh;
+        }
+
+        #chart-container {
+          top: 40vh;
+          left: 0;
+          width: 100vw;
+          height: 25vh;
+        }
+
+        #table-container {
+          top: 65vh;
+          left: 0vw;
+          width: 100vw;
+          height: 35vh;
+        }
       }
 
     </style>
@@ -55,10 +95,17 @@
 
   <body>
     <div id="map-container"></div>
+    <div id="chart-container"></div>
     <div id="table-container"></div>
   </body>
 
   <script type="text/javascript">
+
+    let table;
+    let chartSeries;
+    let deckgl;
+    let buildingLayer = new deck.MVTLayer({});
+    let h3Layer = new deck.H3HexagonLayer({});
 
     async function initialize() {
 
@@ -69,22 +116,35 @@
       // To use MapTiler sources:
       const MAPTILER_API_KEY = 'dhfAsVT8214pMcO8qitx'; // just a temporary free api key
 
-      const BASE_MAP_STYLE = `https://api.maptiler.com/maps/dataviz/style.json?key=${MAPTILER_API_KEY}`; // Carto alternative: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
+      // NOTE: Custom map styles can be used, but requires hosting the style.json file ourselves.
+      const BASE_MAP_STYLE = `https://api.maptiler.com/maps/dataviz/style.json?key=${MAPTILER_API_KEY}`;
+      //++const BASE_MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'; // Carto alternative
 
-      const BUILDING_TILES = `https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key=${MAPTILER_API_KEY}`; // for deck.gl MVTLayer
+      const BUILDING_TILES = `https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key=${MAPTILER_API_KEY}`; // deck.gl MVTLayer (optional)
 
       const INITIAL_VIEW_STATE = {
+          /*
           latitude: -33.92584,
           longitude: 18.42322,
           zoom: 15,
           bearing: 0,
           pitch: 60,
+          */
+          latitude: -34,
+          longitude: 18.54,
+          zoom: 11,
+          bearing: 0,
+          pitch: 50,
         };
+
+      // Gradient colour scale of the four CoCT logo colours.
+      // See https://gka.github.io/palettes/#/128|s|0099cc,cccc00,cc6600,cc0066|cc6600,cc0066|0|0
+      //++const colourScale = chroma.scale(['#0099cc', '#cccc00', '#cc6600', '#cc0066']).domain([0, 1]);
 
       //************************
 
-      // Create building layer
-      const buildingLayer = new deck.MVTLayer({
+      // Create building layer (OPTIONAL)
+      buildingLayer = new deck.MVTLayer({
         data: BUILDING_TILES,
         loadOptions: {
           mvt: {
@@ -112,7 +172,7 @@
       }); // Docs: https://deck.gl/docs/api-reference/geo-layers/mvt-layer
 
       // Create deck.gl map
-      const deckgl = new deck.DeckGL({
+      deckgl = new deck.DeckGL({
         container: 'map-container',
         map: maplibregl,
 
@@ -125,11 +185,9 @@
 
         layers: [ // Docs: https://deck.gl/search?q=maptiler+layers
           buildingLayer,
+          h3Layer
         ]
       });
-
-      //++console.log(deckgl);
-      //++console.log(maplibregl);
 
       // Prevent triggering contextmenu after using right mouse-button on map
       document.getElementById('map-container').addEventListener('contextmenu', function(event) {
@@ -137,20 +195,85 @@
           event.stopPropagation();
       });
 
+      //============ CHART ============
+      // Initialise chart objects
+      const root = am5.Root.new("chart-container");
+
+      root.setThemes([
+        am5themes_Animated.new(root)
+      ]);
+
+      const chart = root.container.children.push(
+        am5xy.XYChart.new(root, {})
+      );
+
+      const yAxis = chart.yAxes.push(
+        am5xy.ValueAxis.new(root, {
+          renderer: am5xy.AxisRendererY.new(root, {})
+        })
+      );
+
+      const xAxis = chart.xAxes.push(
+        am5xy.DateAxis.new(root, {
+          renderer: am5xy.AxisRendererX.new(root, {}),
+          baseInterval: {
+            timeUnit: "month",
+            count: 1
+          },
+          tooltip: am5.Tooltip.new(root, {})
+        })
+      );
+
+      chartSeries = chart.series.push(
+        am5xy.ColumnSeries.new(root, {
+          name: "Service Requests per month",
+          xAxis: xAxis,
+          yAxis: yAxis,
+          valueYField: "sr_count",
+          valueXField: "month",
+          tooltip: am5.Tooltip.new(root, {
+            labelText: "{valueY}"
+          })
+        })
+      );
+
+      chartSeries.columns.template.setAll({
+        cornerRadiusTL: 100,
+        cornerRadiusTR: 100,
+        maxWidth: 20,
+        strokeOpacity: 0
+      })
+
+      chartSeries.appear(300);
+      //++chart.appear(1000, 100);
+
+      const cursor = chart.set("cursor", am5xy.XYCursor.new(root, {}));
+      cursor.lineY.set("visible", false);
+
+      chartSeries.data.processor = am5.DataProcessor.new(root, {
+        numericFields: ["sr_count"],
+        dateFields: ["month"],
+        dateFormat: "MMM yyyy"
+      });
+
       //============ TABLE ============
       // Initialise Tabulator
-      const table = new Tabulator('#table-container', {
+      table = new Tabulator('#table-container', {
         layout: 'fitColumns',
         columns: [
           { title: 'Hexagon ID', field: 'h3_id', headerFilter: true },
           { title: 'Suburb', field: 'suburb', headerFilter: true },
-          { title: 'Month', field: 'month', headerFilter: true },
-          { title: 'Service Requests', field: 'sr_count', headerFilter: true, align: 'right' },
+          { title: 'Month', field: 'month', headerFilter: true, hozAlign: 'right' },
+          { title: 'Service Requests', field: 'sr_count', headerFilter: true, hozAlign: 'right' },
         ],
+      });
+      table.on('dataFiltered', function(filters, rows) {
+        console.log('filtered');
+        aggregateRows(rows);
       });
 
       // Load CSV file
-      fetch('./data/data.csv') // Could also load .csv.gz, but would then have to decompress it in the browser after loading, reducing the benefit of client-side caching.
+      fetch('./data/data.csv') // Could also load .csv.gz, but would then have to decompress it in the browser every time after loading, reducing the benefit of client-side caching.
         .then(response => response.text())
         .then(data => {
           Papa.parse(data, {
@@ -170,6 +293,122 @@
 
     }
 
+    // Function to calculate aggregate sum of sr_count per h3_id
+    function aggregateRows(visibleRows) {
+
+      // Create an object to store sr_count values aggregated by h3_id
+      const aggregatedData = {};
+
+      // Keep max sr_count to normalise values at the end
+      let maxSrCount = 0;
+
+      // Iterate through visible rows and aggregate data
+      visibleRows.forEach(row => {
+        const h3_id = row.getCell('h3_id').getValue();
+        const sr_count = row.getCell('sr_count').getValue();
+
+        if (h3_id) { // skip empty rows
+          if (aggregatedData[h3_id]) { // if key exists
+            aggregatedData[h3_id] += sr_count; // add to running total
+          } else {
+            aggregatedData[h3_id] = sr_count; // add new key-value pair
+          }
+
+          if (maxSrCount < aggregatedData[h3_id]) {
+            maxSrCount = aggregatedData[h3_id];
+          }
+        }
+      });
+
+      // Normalize sr_count values (for colourmap interpolation)
+      for (const h3_id in aggregatedData) {
+        if (aggregatedData.hasOwnProperty(h3_id)) {
+          aggregatedData[h3_id] /= 1.0 * maxSrCount;
+        }
+      }
+
+      if (maxSrCount) {
+        updateMapHexagons(aggregatedData);
+        updateBarChart(visibleRows);
+      }
+
+    }
+
+    function updateMapHexagons(h3values) {
+
+      // Populate the H3HexagonLayer (Docs: https://deck.gl/docs/api-reference/geo-layers/h3-hexagon-layer)
+      h3Layer = new deck.H3HexagonLayer({
+        id: 'h3-hexagon-layer',
+        data: Object.entries(h3values).map(([h3_id, sr_count]) => ({
+          h3_id,
+          sr_count,
+        })),
+        pickable: false,
+        stroked: true,
+        filled: true,
+        extruded: true,
+        getElevation: 0,//++d => d.sr_count * 1000,
+        getHexagon: d => d.h3_id,
+        getFillColor: d => {
+          return [
+            Math.round(255),
+            Math.round(128 - 128 * d.sr_count),
+            Math.round(0 + 64 * d.sr_count),
+            Math.round(30 + 170 * d.sr_count)
+          ]; // [r, g, b, a]
+        },
+        getLineColor: [255, 255, 255, 50],
+        lineWidthMinPixels: 1,
+      });
+
+      // Update the map layers
+      deckgl.setProps({
+        layers: [
+          buildingLayer,
+          h3Layer
+        ]
+      });
+
+    }
+
+    function updateBarChart(visibleRows) {
+
+      // Create an object to store sr_count values aggregated by month
+      const aggregatedData = {}; // "dict"
+
+      // Iterate through visible rows and aggregate data
+      visibleRows.forEach(row => {
+        const month = row.getCell('month').getValue();
+        const sr_count = row.getCell('sr_count').getValue();
+
+        if (month) { // skip empty rows
+          if (aggregatedData[month]) { // if key exists
+            aggregatedData[month] += sr_count; // add to running total
+          } else {
+            aggregatedData[month] = sr_count; // add new key-value pair
+          }
+        }
+      });
+
+      // Populate the chart with the new values
+      const resultArray = Object.keys(aggregatedData).map(month => ({
+        month: month,
+        sr_count: aggregatedData[month]
+      }));
+
+      chartSeries.data.setAll(resultArray);
+      /*
+      chartSeries.data.setAll([
+        { month: "Aug 2020", sr_count: 1000 },
+        { month: "Feb 2020", sr_count: 1200 },
+        { month: "May 2020", sr_count: 850.5 }
+      ]);
+      */
+
+    }
+
+    // Run once everything is loaded.
     initialize();
-  </script>
+
+</script>
 </html>
