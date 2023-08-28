@@ -5,21 +5,24 @@
     <script src="https://unpkg.com/deck.gl@8.9.25/dist.min.js"></script>
 
     <!--MapLibre GL JS-->
-    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css' />
-    <script src='https://unpkg.com/maplibre-gl@3.3.0/dist/maplibre-gl.js'></script>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css">
+    <script src="https://unpkg.com/maplibre-gl@3.3.0/dist/maplibre-gl.js"></script>
 
     <!--H3.js-->
     <!--script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0"></script-->
 
     <!--Pako-->
-    <!--script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script-->
+    <!--script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script-->
+
+    <!--PapaParse-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <!--Chroma.js-->
     <!--script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script-->
 
     <!--Tabulator-->
-    <!--link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
-    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script-->
+    <link rel="stylesheet" href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css">
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script>
 
     <!--amCharts-->
     <!--script src="https://cdn.amcharts.com/lib/5/index.js"></script>
@@ -38,7 +41,12 @@
       }
 
       #map-container {
-        height: 100vh;
+        height: 50vh;
+        width: 100vw;
+      }
+
+      #table-container {
+        height: 50vh;
         width: 100vw;
       }
 
@@ -47,14 +55,16 @@
 
   <body>
     <div id="map-container"></div>
+    <div id="table-container"></div>
   </body>
 
   <script type="text/javascript">
 
     async function initialize() {
 
-      /*********************************/
-      // CONSTANTS
+      //============ MAP ============
+
+      //****** CONSTANTS *******
 
       // To use MapTiler sources:
       const MAPTILER_API_KEY = 'dhfAsVT8214pMcO8qitx'; // just a temporary free api key
@@ -71,7 +81,7 @@
           pitch: 60,
         };
 
-      //*********************************
+      //************************
 
       // Create building layer
       const buildingLayer = new deck.MVTLayer({
@@ -126,6 +136,37 @@
           event.preventDefault();
           event.stopPropagation();
       });
+
+      //============ TABLE ============
+      // Initialise Tabulator
+      const table = new Tabulator('#table-container', {
+        layout: 'fitColumns',
+        columns: [
+          { title: 'Hexagon ID', field: 'h3_id', headerFilter: true },
+          { title: 'Suburb', field: 'suburb', headerFilter: true },
+          { title: 'Month', field: 'month', headerFilter: true },
+          { title: 'Service Requests', field: 'sr_count', headerFilter: true, align: 'right' },
+        ],
+      });
+
+      // Load CSV file
+      fetch('./data/data.csv') // Could also load .csv.gz, but would then have to decompress it in the browser after loading, reducing the benefit of client-side caching.
+        .then(response => response.text())
+        .then(data => {
+          Papa.parse(data, {
+            header: true,
+            dynamicTyping: true,
+            complete: function (results) {
+              table.setData(results.data);
+            },
+            error: function (error) {
+              console.error('Error parsing CSV:', error.message);
+            }
+          });
+        })
+        .catch(error => console.error('Error fetching CSV:', error));
+
+      //===============================
 
     }
 
