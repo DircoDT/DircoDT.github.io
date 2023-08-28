@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!--Deck.gl-->
+    <script src="https://unpkg.com/deck.gl@8.9.25/dist.min.js"></script>
+
+    <!--MapLibre GL JS-->
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css' />
+    <script src='https://unpkg.com/maplibre-gl@3.3.0/dist/maplibre-gl.js'></script>
+
+    <!--H3.js-->
+    <!--script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0"></script-->
+
+    <!--Pako-->
+    <!--script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script-->
+
+    <!--Chroma.js-->
+    <!--script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script-->
+
+    <!--Tabulator-->
+    <!--link href="https://unpkg.com/tabulator-tables@5.5.2/dist/css/tabulator.min.css" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@5.5.2/dist/js/tabulator.min.js"></script-->
+
+    <!--amCharts-->
+    <!--script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/xy.js"></script>
+    <script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script-->
+
+    <link href="https://fonts.cdnfonts.com/css/noto-sans" rel="stylesheet">
+
+    <style>
+
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: 'Noto Sans', 'Open Sans', 'Roboto', 'Segoe UI', 'Helvetica', 'Arial', sans-serif; /* Fall-back font stack */
+      }
+
+      #map-container {
+        height: 100vh;
+        width: 100vw;
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <div id="map-container"></div>
+  </body>
+
+  <script type="text/javascript">
+
+    async function initialize() {
+
+      /*********************************/
+      // CONSTANTS
+
+      // To use MapTiler sources:
+      const MAPTILER_API_KEY = 'dhfAsVT8214pMcO8qitx'; // just a temporary free api key
+
+      const BASE_MAP_STYLE = `https://api.maptiler.com/maps/dataviz/style.json?key=${MAPTILER_API_KEY}`; // Carto alternative: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'
+
+      const BUILDING_TILES = `https://api.maptiler.com/tiles/v3/{z}/{x}/{y}.pbf?key=${MAPTILER_API_KEY}`; // for deck.gl MVTLayer
+
+      const INITIAL_VIEW_STATE = {
+          latitude: -33.92584,
+          longitude: 18.42322,
+          zoom: 15,
+          bearing: 0,
+          pitch: 60,
+        };
+
+      //*********************************
+
+      // Create building layer
+      const buildingLayer = new deck.MVTLayer({
+        data: BUILDING_TILES,
+        loadOptions: {
+          mvt: {
+            layers: ['building']
+          }
+        },
+        minZoom: 0,
+        maxZoom: 15,
+        getLineColor: f => {
+          //++return f.properties.colour && chroma.valid(f.properties.colour) ? chroma(f.properties.colour).rgb() : [102, 102, 51, 66]
+          return [102, 102, 51, 66]
+        },
+        getFillColor: f => {
+          //++return f.properties.colour && chroma.valid(f.properties.colour) ? chroma(f.properties.colour).rgb() : [204, 204, 102, 66]
+          return [204, 204, 102, 66]
+        },
+        getLineWidth: 1,
+        lineWidthMinPixels: 1,
+        getElevation: f => {
+          return f.properties.render_height ? f.properties.render_height : 0 // show at this height, if no render_height property specified
+        },
+        extruded: true,
+        wireframe: true,
+        binary: true,
+      }); // Docs: https://deck.gl/docs/api-reference/geo-layers/mvt-layer
+
+      // Create deck.gl map
+      const deckgl = new deck.DeckGL({
+        container: 'map-container',
+        map: maplibregl,
+
+        mapStyle: BASE_MAP_STYLE,
+
+        initialViewState: INITIAL_VIEW_STATE,
+        controller: true,
+        antialias: true,
+        interleaved: true,
+
+        layers: [ // Docs: https://deck.gl/search?q=maptiler+layers
+          buildingLayer,
+        ]
+      });
+
+      //++console.log(deckgl);
+      //++console.log(maplibregl);
+
+      // Prevent triggering contextmenu after using right mouse-button on map
+      document.getElementById('map-container').addEventListener('contextmenu', function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+      });
+
+    }
+
+    initialize();
+  </script>
+</html>
