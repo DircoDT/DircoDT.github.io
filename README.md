@@ -85,7 +85,7 @@ For the hexagon colouring on the map, I initially thought of using the logo colo
 
 Gradient colourmaps can be tricky to get right, considering the human eye's significant difference in sensitivity to different colours. If the rest of the interface uses neutral or blue shades, it is tempting to use green, yellow, orange and red to indicate severity, to provide the most contrast without using blue again. With wider audiences it will be necessary to take colour vision deficiencies into account, though. Especially red-green confusion is not that rare. A colourmap should ideally be monotonically increasing in perceived brightness. (Convert it to greyscale for a quick check.)
 
-For the overall layout off the application, I made the map view the primary panel. The chart and the table need limited space, in this case. The layout is responsive, stacking all three views on top of each other when viewed in Portrait mode. If more functionality or more complex data is added in future, it may be necessary to let users toggle and resize the different panels according to their needs, or perhaps even split it off into multiple windows/screens.
+For the overall layout of the application, I made the map view the primary panel. The chart and the table need limited space, in this case. The layout is responsive, stacking all three views on top of each other when viewed in Portrait mode. If more functionality or more complex data is added in future, it may be necessary to let users toggle and resize the different panels according to their needs, or perhaps even split it off into multiple windows/screens.
 
 ## Libraries / Includes
 
